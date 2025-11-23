@@ -1,4 +1,4 @@
-# Venge Mod Patcher
+# RVNG Mod Patcher
 
 A lightweight Windows tool to patch the **Venge Client** with mods or restore it to the default state.
 
