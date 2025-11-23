@@ -4,7 +4,6 @@
 ## developing with Visual Studio, the VS .gitignore
 ## https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 ## has more thorough IDE-specific entries.
-##
 ## Get latest from https://github.com/github/gitignore/blob/main/Dotnet.gitignore
 
 # Build results
