@@ -2,9 +2,9 @@
 
 A lightweight Windows tool to patch the **Venge Client** with mods or restore it to the default state.
 
-![ModPatcher](https://i.imgur.com/A0XoZPY.png)
+![ModPatcher](https://i.imgur.com/78aVfRM.png)
 
-[VirusTotal scan](https://www.virustotal.com/gui/file/6493b8a56f63e96ec6a6ce7c0e2121220a2b23ec19bd9e09621568abf750a07c)
+[VirusTotal scan (for v1.1)](https://www.virustotal.com/gui/file/987c0db8f3209a1dfe4a8af005de7a601f82933e2550498b1a29e6109016efc8)
 
 ---
 
@@ -12,7 +12,7 @@ A lightweight Windows tool to patch the **Venge Client** with mods or restore it
 
 - Apply mods easily from a designated `Mods` folder.  
 - Restore the Venge Client folder to default using automatic backups.
-- Simple, user-friendly UI with minimal configuration required.  
+- Simple, user-friendly UI with minimal configuration required.
 
 ---
 
