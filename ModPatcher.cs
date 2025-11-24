@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -10,9 +9,8 @@ namespace VengeModPatcher
     {
         private readonly string AppFolder;
         private readonly string ModsFolder;
-        private readonly string BackupFolder;
-        private readonly string FirstRunFile;
-        private readonly string ClientPathFile;
+
+        private string ClientPath;
 
         private const string VengeClientFolderName = "Venge Client";
 
@@ -22,14 +20,10 @@ namespace VengeModPatcher
 
             AppFolder = Application.StartupPath;
             ModsFolder = Path.Combine(AppFolder, "Mods");
-            BackupFolder = Path.Combine(AppFolder, "Backup");
-            FirstRunFile = Path.Combine(AppFolder, "run.txt");
-            ClientPathFile = Path.Combine(AppFolder, "client_path.txt");
 
             EnsureFolderExists(ModsFolder);
-            EnsureFolderExists(BackupFolder);
 
-            PatchType.Items.AddRange(new object[] { "Default", "Modded" });
+            PatchType.Items.AddRange(new object[] { "Unmodded", "Modded" });
             PatchType.SelectedIndex = 0;
             PatchType.SelectedIndexChanged += PatchType_SelectedIndexChanged;
 
@@ -37,14 +31,12 @@ namespace VengeModPatcher
             PatchButton.Click += PatchButton_Click;
             ModsButton.Click += (s, e) => OpenModsFolder();
 
-            // Menu items
             editModPathMenu.Click += EditModPathMenu_Click;
-            editFirstRunMenu.Click += EditFirstRunMenu_Click;
             refreshModsMenu.Click += RefreshMenu_Click;
             helpMenu.Click += HelpMenu_Click;
             aboutMenu.Click += AboutMenu_Click;
 
-            CheckFirstRun();
+            SetClientPathAutomatically();
             LoadAvailableMods();
         }
 
@@ -69,88 +61,70 @@ namespace VengeModPatcher
 
         private static bool HasNestedVengeClient(string path)
         {
-            return Directory.Exists(path) &&
-                   Directory.EnumerateDirectories(path)
-                            .Any(d => Path.GetFileName(d).Equals(VengeClientFolderName, StringComparison.OrdinalIgnoreCase));
+            return Directory.Exists(path) && Directory.EnumerateDirectories(path).Any(d => Path.GetFileName(d).Equals(VengeClientFolderName, StringComparison.OrdinalIgnoreCase));
         }
 
         private static void ClearDirectory(string path)
         {
             var di = new DirectoryInfo(path);
-            foreach (var file in di.GetFiles()) file.Delete();
-            foreach (var dir in di.GetDirectories()) dir.Delete(true);
+            foreach (var file in di.GetFiles())
+            {
+                if (file.IsReadOnly) file.IsReadOnly = false;
+                file.Delete();
+            }
+
+            foreach (var dir in di.GetDirectories())
+            {
+                RemoveReadOnlyRecursively(dir);
+                dir.Delete(true);
+            }
         }
 
         private static void CopyDirectory(string sourceDir, string destDir)
         {
             EnsureFolderExists(destDir);
             foreach (var file in Directory.EnumerateFiles(sourceDir))
-                File.Copy(file, Path.Combine(destDir, Path.GetFileName(file)), true);
+            {
+                var destFile = Path.Combine(destDir, Path.GetFileName(file));
+                if (File.Exists(destFile))
+                {
+                    var existing = new FileInfo(destFile);
+                    if (existing.IsReadOnly) existing.IsReadOnly = false;
+                }
+                File.Copy(file, destFile, true);
+            }
 
             foreach (var dir in Directory.EnumerateDirectories(sourceDir))
                 CopyDirectory(dir, Path.Combine(destDir, Path.GetFileName(dir)));
         }
 
-        private static void CreateBackup(string sourcePath, string backupPath)
+        private static void RemoveReadOnlyRecursively(DirectoryInfo dir)
         {
-            ZipFile.CreateFromDirectory(sourcePath, backupPath, CompressionLevel.Fastest, true);
+            foreach (var subDir in dir.GetDirectories())
+                RemoveReadOnlyRecursively(subDir);
+
+            foreach (var file in dir.GetFiles())
+                if (file.IsReadOnly) file.IsReadOnly = false;
+
+            dir.Attributes &= ~FileAttributes.ReadOnly;
         }
 
-        private static void RestoreBackup(string backupZip, string targetPath)
+        private void SetClientPathAutomatically()
         {
-            ClearDirectory(targetPath);
+            string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string vengePath = Path.Combine(documents, VengeClientFolderName);
 
-            var tempExtract = Path.Combine(Path.GetTempPath(), "VengePatchTemp");
-            if (Directory.Exists(tempExtract)) Directory.Delete(tempExtract, true);
-
-            ZipFile.ExtractToDirectory(backupZip, tempExtract);
-
-            var sourcePath = Path.Combine(tempExtract, VengeClientFolderName);
-            if (!Directory.Exists(sourcePath)) sourcePath = tempExtract;
-
-            CopyDirectory(sourcePath, targetPath);
-            Directory.Delete(tempExtract, true);
-        }
-
-        private void CheckFirstRun()
-        {
-            if (File.Exists(FirstRunFile))
+            if (Directory.Exists(vengePath))
             {
-                if (File.Exists(ClientPathFile))
-                    FolderPath.Text = File.ReadAllText(ClientPathFile);
-                return;
+                ClientPath = vengePath;
+                FolderPath.Text = ClientPath;
             }
-
-            MessageBox.Show(
-                "Please select the Venge Client folder in the Documents folder.\nA full backup will be created automatically.",
-                "Setup", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            using var fbd = new FolderBrowserDialog();
-            while (true)
+            else
             {
-                if (fbd.ShowDialog() != DialogResult.OK)
-                {
-                    Application.Exit();
-                    return;
-                }
-
-                if (!IsValidVengeFolder(fbd.SelectedPath))
-                {
-                    MessageBox.Show("Invalid folder! You must select the \"Venge Client\" folder!",
-                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    continue;
-                }
-
-                FolderPath.Text = fbd.SelectedPath;
-                File.WriteAllText(ClientPathFile, fbd.SelectedPath);
-
-                var backupZip = Path.Combine(BackupFolder, "InitialBackup.zip");
-                CreateBackup(fbd.SelectedPath, backupZip);
-
-                break;
+                ClientPath = "";
+                FolderPath.Text = "";
+                MessageBox.Show($"Could not find '{VengeClientFolderName}' in Documents.\nYou may need to browse manually.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
-
-            File.WriteAllText(FirstRunFile, "1");
         }
 
         private void LoadAvailableMods()
@@ -175,8 +149,8 @@ namespace VengeModPatcher
             using var fbd = new FolderBrowserDialog { Description = "Select Venge Client folder" };
             if (fbd.ShowDialog() != DialogResult.OK) return;
 
-            FolderPath.Text = fbd.SelectedPath;
-            File.WriteAllText(ClientPathFile, fbd.SelectedPath);
+            ClientPath = fbd.SelectedPath;
+            FolderPath.Text = ClientPath;
             Activate();
         }
 
@@ -185,7 +159,7 @@ namespace VengeModPatcher
             SetUiEnabled(false);
             try
             {
-                var target = FolderPath.Text;
+                var target = ClientPath;
 
                 if (!IsValidVengeFolder(target) || !Directory.Exists(target))
                 {
@@ -201,25 +175,23 @@ namespace VengeModPatcher
                 }
 
                 var type = PatchType.SelectedItem.ToString();
-                if (type == "Default")
+                if (type == "Unmodded")
                 {
-                    var latestZip = Directory.EnumerateFiles(BackupFolder, "*.zip")
-                        .OrderByDescending(f => f).FirstOrDefault();
-
-                    if (latestZip == null)
-                    {
-                        MessageBox.Show("No backups found.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
-                    }
-
                     try
                     {
-                        RestoreBackup(latestZip, target);
-                        MessageBox.Show("Restored latest backup.", "Success!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        ClearDirectory(target);
+                        MessageBox.Show("Folder patched.", "Success!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                    catch
+                    catch (UnauthorizedAccessException)
                     {
-                        MessageBox.Show("Restore failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Folder is read-only or requires elevated permissions.\nPlease run the patcher as administrator.", "Permission Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        RemoveReadOnlyRecursively(new DirectoryInfo(target));
+                        ClearDirectory(target);
+                        MessageBox.Show("Folder patched after removing read-only.", "Success!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Failed patching folder: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
                 else
@@ -238,9 +210,6 @@ namespace VengeModPatcher
                         return;
                     }
 
-                    var backupZip = Path.Combine(BackupFolder, $"Backup_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
-                    CreateBackup(target, backupZip);
-
                     try
                     {
                         ClearDirectory(target);
@@ -252,10 +221,17 @@ namespace VengeModPatcher
 
                         MessageBox.Show("Patched successfully.", "Success!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                    catch
+                    catch (UnauthorizedAccessException)
                     {
-                        RestoreBackup(backupZip, target);
-                        MessageBox.Show("Patch failed and backup restored.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Folder is read-only or requires elevated permissions.\nPlease run the patcher as administrator.", "Permission Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        RemoveReadOnlyRecursively(new DirectoryInfo(target));
+                        ClearDirectory(target);
+                        CopyDirectory(modPath, target);
+                        MessageBox.Show("Patched successfully after removing read-only.", "Success!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Patch failed: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -274,45 +250,34 @@ namespace VengeModPatcher
             ModsButton.Enabled = enabled;
         }
 
-        // Menu Item Handlers
         private void RefreshMenu_Click(object sender, EventArgs e)
         {
             LoadAvailableMods();
-            if (HasNestedVengeClient(FolderPath.Text))
+            if (HasNestedVengeClient(ClientPath))
             {
-                MessageBox.Show("Folder contains a nested \"Venge Client\" folder.\nMove its contents up to patch correctly.",
+                MessageBox.Show(
+                    "Folder contains a nested Venge Client folder.\n" +
+                    "Move its contents up to patch correctly.",
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void HelpMenu_Click(object sender, EventArgs e)
-        {
-            ShowHelpForm();
-        }
+        private void HelpMenu_Click(object sender, EventArgs e) => ShowHelpForm();
 
-        private void AboutMenu_Click(object sender, EventArgs e)
-        {
-            ShowAboutForm();
-        }
+        private void AboutMenu_Click(object sender, EventArgs e) => ShowAboutForm();
 
         private void EditModPathMenu_Click(object sender, EventArgs e)
         {
-            var file = ClientPathFile;
-            EnsureFileExists(file);
-            System.Diagnostics.Process.Start("notepad.exe", file);
-        }
+            string input = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter the path to the Venge Client folder:",
+                "Edit Client Path",
+                ClientPath);
 
-        private void EditFirstRunMenu_Click(object sender, EventArgs e)
-        {
-            var file = FirstRunFile;
-            EnsureFileExists(file);
-            System.Diagnostics.Process.Start("notepad.exe", file);
-        }
-
-        private static void EnsureFileExists(string filePath)
-        {
-            if (!File.Exists(filePath))
-                File.WriteAllText(filePath, "");
+            if (!string.IsNullOrWhiteSpace(input))
+            {
+                ClientPath = input;
+                FolderPath.Text = ClientPath;
+            }
         }
 
         private void OpenModsFolder()
@@ -335,15 +300,14 @@ namespace VengeModPatcher
 
             var label = new Label
             {
-                Text = "1. Select the Venge Client folder in your Documents folder\n" + 
+                Text = "1. Select the Venge Client folder in your Documents folder\n" +
                        "2. Choose if you want to factory reset or choose a mod\n" +
-                       "3. If you want to reset, select Default and press PATCH\n" +
+                       "3. If you want to reset, select Unmodded and press PATCH\n" +
                        "4. If you want to add a mod, choose Modded\n" +
                        "5. Open the Patcher mod folder with the Folder button\n" +
                        "6. Put all your mods folders inside\n" +
                        "7. Press PATCH and open your game\n\n" +
-                       "NOTE: If you want to swap from one mod to another, you can directly swap without resetting/backing up.",
-
+                       "NOTE: If you want to swap from one mod to another, you can directly swap without resetting.",
                 Dock = DockStyle.Fill,
                 AutoSize = false,
                 TextAlign = System.Drawing.ContentAlignment.TopLeft,
@@ -368,7 +332,7 @@ namespace VengeModPatcher
 
             var label = new Label
             {
-                Text = "RVNG Mod Patcher\nVersion 1.1\n© 2025 aftrheavn",
+                Text = "RVNG Mod Patcher\nVersion 1.2\n© 2025 aftrheavn",
                 Dock = DockStyle.Fill,
                 AutoSize = false,
                 TextAlign = System.Drawing.ContentAlignment.MiddleCenter

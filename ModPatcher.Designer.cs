@@ -20,7 +20,6 @@ namespace VengeModPatcher
         private MenuStrip Menu;
         private ToolStripMenuItem editMenu;
         private ToolStripMenuItem editModPathMenu;
-        private ToolStripMenuItem editFirstRunMenu;
         private ToolStripMenuItem refreshModsMenu;
         private ToolStripMenuItem helpMenu;
         private ToolStripMenuItem aboutMenu;
@@ -46,7 +45,6 @@ namespace VengeModPatcher
             Menu = new MenuStrip();
             editMenu = new ToolStripMenuItem();
             editModPathMenu = new ToolStripMenuItem();
-            editFirstRunMenu = new ToolStripMenuItem();
             refreshModsMenu = new ToolStripMenuItem();
             helpMenu = new ToolStripMenuItem();
             aboutMenu = new ToolStripMenuItem();
@@ -91,10 +89,10 @@ namespace VengeModPatcher
             PatchBox.Location = new Point(8, 64);
             PatchBox.Name = "PatchBox";
             PatchBox.ReadOnly = true;
-            PatchBox.Size = new Size(126, 16);
+            PatchBox.Size = new Size(120, 16);
             PatchBox.TabIndex = 1;
             PatchBox.TabStop = false;
-            PatchBox.Text = "Default/Modded patch?";
+            PatchBox.Text = "Unmodded/Modded?";
             // 
             // DirBox
             // 
@@ -111,7 +109,7 @@ namespace VengeModPatcher
             // 
             // FolderPath
             // 
-            FolderPath.BackColor = Color.White;
+            FolderPath.BackColor = Color.FromArgb(225, 225, 225);
             FolderPath.BorderStyle = BorderStyle.FixedSingle;
             FolderPath.ForeColor = Color.Black;
             FolderPath.Location = new Point(8, 31);
@@ -140,7 +138,7 @@ namespace VengeModPatcher
             PatchType.ForeColor = Color.Black;
             PatchType.Location = new Point(8, 85);
             PatchType.Name = "PatchType";
-            PatchType.Size = new Size(72, 23);
+            PatchType.Size = new Size(84, 23);
             PatchType.TabIndex = 5;
             // 
             // ModsList
@@ -148,9 +146,9 @@ namespace VengeModPatcher
             ModsList.BackColor = Color.White;
             ModsList.DropDownStyle = ComboBoxStyle.DropDownList;
             ModsList.ForeColor = Color.Black;
-            ModsList.Location = new Point(86, 85);
+            ModsList.Location = new Point(98, 85);
             ModsList.Name = "ModsList";
-            ModsList.Size = new Size(108, 23);
+            ModsList.Size = new Size(96, 23);
             ModsList.TabIndex = 6;
             // 
             // PatchButton
@@ -169,7 +167,7 @@ namespace VengeModPatcher
             // 
             // Menu
             // 
-            Menu.Items.AddRange(new ToolStripItem[] { editMenu, refreshModsMenu, helpMenu, aboutMenu });
+            Menu.Items.AddRange(new ToolStripItem[] { refreshModsMenu, editMenu, helpMenu, aboutMenu });
             Menu.Location = new Point(0, 0);
             Menu.Name = "Menu";
             Menu.Size = new Size(279, 24);
@@ -177,7 +175,7 @@ namespace VengeModPatcher
             // 
             // editMenu
             // 
-            editMenu.DropDownItems.AddRange(new ToolStripItem[] { editModPathMenu, editFirstRunMenu });
+            editMenu.DropDownItems.AddRange(new ToolStripItem[] { editModPathMenu });
             editMenu.Name = "editMenu";
             editMenu.Size = new Size(39, 20);
             editMenu.Text = "Edit";
@@ -185,14 +183,8 @@ namespace VengeModPatcher
             // editModPathMenu
             // 
             editModPathMenu.Name = "editModPathMenu";
-            editModPathMenu.Size = new Size(149, 22);
+            editModPathMenu.Size = new Size(180, 22);
             editModPathMenu.Text = "Edit mod path";
-            // 
-            // editFirstRunMenu
-            // 
-            editFirstRunMenu.Name = "editFirstRunMenu";
-            editFirstRunMenu.Size = new Size(149, 22);
-            editFirstRunMenu.Text = "Edit first run";
             // 
             // refreshModsMenu
             // 

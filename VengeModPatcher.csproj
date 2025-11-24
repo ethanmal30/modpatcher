@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <SignAssembly>False</SignAssembly>
-    <AssemblyName>RVNG Mod Patcher (v1.1)</AssemblyName>
+    <AssemblyName>RVNG Mod Patcher</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
